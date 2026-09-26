@@ -1,0 +1,17 @@
+name: Validate breaches
+
+on:
+  push:
+    paths: ['breaches.json', 'index.html', 'scripts/validate-breaches.mjs', '.github/workflows/validate-breaches.yml']
+  pull_request:
+    paths: ['breaches.json', 'index.html', 'scripts/validate-breaches.mjs', '.github/workflows/validate-breaches.yml']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/validate-breaches.mjs
