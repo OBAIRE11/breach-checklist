@@ -6,7 +6,7 @@
 <title>I Got Breached — Now What?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Lora:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500&family=Lora:wght@600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #12161c;
@@ -22,7 +22,7 @@
     --danger: #ef8768;
     --danger-dim: #4a3226;
   }
-  :root:not([data-theme="light"]) { color-scheme: dark; }
+  :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
@@ -86,6 +86,8 @@
     overflow: hidden;
     display: none;
     background: var(--surface);
+    max-height: 320px;
+    overflow-y: auto;
   }
   .results.open { display: block; }
   .result-item {
@@ -406,8 +408,8 @@
   </header>
 
   <div class="search-box">
-    <input type="text" id="search" placeholder="Search a company, e.g. LinkedIn, Equifax, T-Mobile" autocomplete="off">
-    <div class="results" id="results"></div>
+    <input type="text" id="search" placeholder="Search a company, e.g. LinkedIn, Equifax, T-Mobile" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="results" aria-label="Search for a company">
+    <div class="results" id="results" role="listbox"></div>
   </div>
   <div class="quick-picks" id="quick-picks"></div>
 
@@ -527,6 +529,10 @@ function stepsFor(types) {
 // The breach list lives in breaches.json so it can be updated without touching this page.
 let BREACHES = [];
 let breachesLoaded = false;
+let currentBreach = null;
+let wasComplete = false;
+let matches = [];
+let activeIdx = -1;
 
 const searchEl = document.getElementById('search');
 const resultsEl = document.getElementById('results');
@@ -545,35 +551,88 @@ function renderQuickPicks() {
   });
 }
 
+const normalize = str => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function openResults(open) {
+  resultsEl.classList.toggle('open', open);
+  searchEl.setAttribute('aria-expanded', open);
+  if (!open) setActive(-1);
+}
+
+function setActive(i) {
+  const items = resultsEl.querySelectorAll('.result-item');
+  items.forEach((el, j) => el.classList.toggle('active', j === i));
+  activeIdx = i;
+  if (items[i]) {
+    items[i].scrollIntoView({ block: 'nearest' });
+    searchEl.setAttribute('aria-activedescendant', items[i].id);
+  } else {
+    searchEl.removeAttribute('aria-activedescendant');
+  }
+}
+
+function noMatch(text) {
+  const el = document.createElement('div');
+  el.className = 'no-match';
+  el.textContent = text;
+  return el;
+}
+
 function renderResults(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) { resultsEl.classList.remove('open'); return; }
+  const q = normalize(query);
+  if (!q) { openResults(false); return; }
   if (!breachesLoaded) {
-    resultsEl.innerHTML = '<div class="no-match">Loading the breach list…</div>';
-    resultsEl.classList.add('open');
+    resultsEl.replaceChildren(noMatch('Loading the breach list…'));
+    openResults(true);
     return;
   }
-  const matches = BREACHES.filter(b => b.name.toLowerCase().includes(q));
-  resultsEl.innerHTML = '';
+  matches = BREACHES
+    .map(b => ({ b, pos: normalize(b.name).indexOf(q) }))
+    .filter(m => m.pos !== -1)
+    .sort((x, y) => (y.pos === 0) - (x.pos === 0)) // names that start with the query first
+    .map(m => m.b);
   if (matches.length === 0) {
-    resultsEl.innerHTML = '<div class="no-match">No match in our list yet. Try haveibeenpwned.com to confirm which breaches affect you.</div>';
+    resultsEl.replaceChildren(noMatch('No match in our list yet. Try haveibeenpwned.com to confirm which breaches affect you.'));
   } else {
-    matches.forEach(b => {
+    resultsEl.replaceChildren(...matches.map((b, i) => {
       const el = document.createElement('div');
       el.className = 'result-item';
-      el.innerHTML = b.name + '<span class="yr">' + b.year + '</span>';
+      el.id = 'result-' + i;
+      el.setAttribute('role', 'option');
+      el.textContent = b.name;
+      const yr = document.createElement('span');
+      yr.className = 'yr';
+      yr.textContent = b.year;
+      el.appendChild(yr);
       el.onclick = () => selectBreach(b);
-      resultsEl.appendChild(el);
-    });
+      return el;
+    }));
   }
-  resultsEl.classList.add('open');
+  activeIdx = -1;
+  openResults(true);
 }
+
+searchEl.addEventListener('keydown', e => {
+  if (!resultsEl.classList.contains('open') || matches.length === 0) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    setActive((activeIdx + 1) % matches.length);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    setActive(activeIdx <= 0 ? matches.length - 1 : activeIdx - 1);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    selectBreach(matches[Math.max(activeIdx, 0)]);
+  } else if (e.key === 'Escape') {
+    openResults(false);
+  }
+});
 
 function selectBreach(b) {
   currentBreach = b;
   wasComplete = false;
   searchEl.value = b.name;
-  resultsEl.classList.remove('open');
+  openResults(false);
   document.getElementById('b-name').textContent = b.name;
   document.getElementById('b-year').textContent = b.year;
 
@@ -581,6 +640,7 @@ function selectBreach(b) {
   exposedEl.innerHTML = '';
   b.types.forEach(t => {
     const info = DATA_TYPES[t];
+    if (!info) return;
     const tag = document.createElement('span');
     tag.className = 'exposed-tag ' + info.severity;
     tag.textContent = info.label;
@@ -590,31 +650,28 @@ function selectBreach(b) {
   const steps = stepsFor(b.types);
   const listEl = document.getElementById('checklist');
   listEl.innerHTML = '';
-  steps.forEach((s, i) => {
+  steps.forEach(s => {
     const row = document.createElement('label');
     row.className = 'step';
     row.innerHTML =
-      '<input type="checkbox" data-idx="' + i + '">' +
-      '<div class="step-body">' +
-        '<h3>' + s.t + '<span class="priority-tag ' + s.p + '">' + (s.p === 'now' ? 'do now' : 'do soon') + '</span></h3>' +
-        '<p>' + s.d + '</p>' +
-      '</div>';
-    listEl.appendChild(row);
-  });
-
-  listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      '<input type="checkbox">' +
+      '<div class="step-body"><h3><span></span><span class="priority-tag"></span></h3><p></p></div>';
+    row.querySelector('h3 span').textContent = s.t;
+    const tag = row.querySelector('.priority-tag');
+    tag.classList.add(s.p);
+    tag.textContent = s.p === 'now' ? 'do now' : 'do soon';
+    row.querySelector('p').textContent = s.d;
+    const cb = row.querySelector('input');
     cb.addEventListener('change', () => {
-      cb.closest('.step').classList.toggle('done', cb.checked);
+      row.classList.toggle('done', cb.checked);
       updateProgress();
     });
+    listEl.appendChild(row);
   });
 
   updateProgress();
   panel.classList.add('open');
 }
-
-let currentBreach = null;
-let wasComplete = false;
 
 function updateProgress() {
   const boxes = document.querySelectorAll('#checklist input[type="checkbox"]');
@@ -711,7 +768,7 @@ subForm.addEventListener('submit', async e => {
 searchEl.addEventListener('input', e => renderResults(e.target.value));
 searchEl.addEventListener('focus', e => { if (e.target.value) renderResults(e.target.value); });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-box')) resultsEl.classList.remove('open');
+  if (!e.target.closest('.search-box')) openResults(false);
 });
 
 async function loadBreaches() {
