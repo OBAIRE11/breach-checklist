@@ -164,5 +164,19 @@
   {"name": "U.S. Bank (card vendor)", "year": 2026, "types": ["financial"], "added": "2026-09-26"},
   {"name": "Redfin", "year": 2026, "types": ["ssn", "financial", "gov_id"], "added": "2026-09-26"},
   {"name": "Gyazo", "year": 2026, "types": ["email", "password"], "added": "2026-09-26"},
-  {"name": "Mathspace", "year": 2026, "types": ["email"], "added": "2026-09-26"}
+  {"name": "Mathspace", "year": 2026, "types": ["email"], "added": "2026-09-26"},
+  {"name": "Ticketfly", "year": 2018, "types": ["email", "address", "phone", "password"], "added": "2026-09-26"},
+  {"name": "Poshmark", "year": 2018, "types": ["email", "password"], "added": "2026-09-26"},
+  {"name": "Houzz", "year": 2019, "types": ["email", "password"], "added": "2026-09-26"},
+  {"name": "Wyze", "year": 2019, "types": ["email"], "added": "2026-09-26"},
+  {"name": "Morgan Stanley", "year": 2020, "types": ["ssn", "financial"], "added": "2026-09-26"},
+  {"name": "Nintendo", "year": 2020, "types": ["email", "password"], "added": "2026-09-26"},
+  {"name": "ParkMobile", "year": 2021, "types": ["email", "phone", "password"], "added": "2026-09-26"},
+  {"name": "Carhartt", "year": 2026, "types": ["email", "phone", "address"], "added": "2026-09-26"},
+  {"name": "SafePal", "year": 2026, "types": ["email", "address", "phone"], "added": "2026-09-26"},
+  {"name": "Trezor (ShipMonk shipping vendor)", "year": 2026, "types": ["email", "address", "phone"], "added": "2026-09-26"},
+  {"name": "KDDI (Japanese ISP email platform)", "year": 2026, "types": ["email", "password"], "added": "2026-09-26"},
+  {"name": "NYC Health + Hospitals", "year": 2026, "types": ["ssn", "gov_id", "financial", "address"], "added": "2026-09-26"},
+  {"name": "Manchester Airports Group (airport Wi-Fi)", "year": 2026, "types": ["email"], "added": "2026-09-26"},
+  {"name": "Chick-fil-A (2026 account takeovers)", "year": 2026, "types": ["password", "email"], "added": "2026-09-26"}
 ]
