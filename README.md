@@ -31,3 +31,11 @@ The page loads `breaches.json` with `fetch`, which browsers block when you open 
 python3 -m http.server 8000
 # then open http://localhost:8000
 ```
+
+## Email alerts (Buttondown)
+
+The "Get notified about new breaches" form sends signups to [Buttondown](https://buttondown.com). To turn it on, set `BUTTONDOWN_USERNAME` near the top of the script in `index.html` to your Buttondown username. While it's empty, the form shows "coming soon".
+
+Submitting opens a small Buttondown window, because Buttondown may need to show a CAPTCHA or confirmation step. Subscribers then confirm by email. To send an alert, write a new email in the Buttondown dashboard.
+
+To move to another service later, export your subscribers from Buttondown as a CSV file (Subscribers, then Export), import it into the new service, and point the form at that service instead.

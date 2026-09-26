@@ -19,7 +19,6 @@
   {"name": "Anthem", "year": 2015, "types": ["ssn", "address", "financial", "email"], "added": "2026-09-26"},
   {"name": "JPMorgan Chase", "year": 2014, "types": ["email", "phone", "address"], "added": "2026-09-26"},
   {"name": "MGM Resorts", "year": 2023, "types": ["ssn", "address", "phone", "email"], "added": "2026-09-26"},
-  {"name": "Twitch", "year": 2021, "types": ["email", "password"], "added": "2026-09-26"},
   {"name": "LastPass", "year": 2022, "types": ["password", "email", "address"], "added": "2026-09-26"},
   {"name": "Ticketmaster", "year": 2024, "types": ["financial", "address", "email", "phone"], "added": "2026-09-26"},
   {"name": "Change Healthcare", "year": 2024, "types": ["ssn", "financial", "address"], "added": "2026-09-26"},
