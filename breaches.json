@@ -142,5 +142,7 @@
   {"name": "Fiesta Insurance", "year": 2026, "types": ["ssn", "gov_id", "financial", "address"], "added": "2026-09-26"},
   {"name": "RTX (Raytheon)", "year": 2026, "types": ["ssn", "address"], "added": "2026-09-26"},
   {"name": "Vacation Myrtle Beach", "year": 2026, "types": ["ssn", "gov_id", "financial"], "added": "2026-09-26"},
-  {"name": "Best Buy (chat vendor)", "year": 2017, "types": ["financial"], "added": "2026-09-26"}
+  {"name": "Best Buy (chat vendor)", "year": 2017, "types": ["financial"], "added": "2026-09-26"},
+  {"name": "Sears (chat vendor)", "year": 2017, "types": ["financial"], "added": "2026-09-26"},
+  {"name": "Delta Air Lines (chat vendor)", "year": 2017, "types": ["financial", "address"], "added": "2026-09-26"}
 ]
