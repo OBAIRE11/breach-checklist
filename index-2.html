@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>I Got Breached — Now What?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Lora:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12161c;
+    --surface: #1a2129;
+    --surface-2: #212a33;
+    --border: #2c3742;
+    --border-strong: #3d4b58;
+    --text: #e8ecef;
+    --text-secondary: #94a3ad;
+    --text-muted: #62717c;
+    --accent: #4fd1c5;
+    --accent-dim: #2d5f5a;
+    --danger: #ef8768;
+    --danger-dim: #4a3226;
+  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  header {
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 32px;
+  }
+  .kicker {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 34px;
+    line-height: 1.2;
+    margin: 0 0 14px;
+    max-width: 15ch;
+  }
+  header p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    max-width: 46ch;
+    margin: 0;
+  }
+  .search-box { position: relative; margin-bottom: 8px; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    font-size: 16px;
+    font-family: inherit;
+    padding: 14px 16px;
+    border-radius: 6px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--text-muted); }
+  .results {
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    display: none;
+    background: var(--surface);
+  }
+  .results.open { display: block; }
+  .result-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-item:hover, .result-item.active { background: var(--surface-2); }
+  .result-item .yr { color: var(--text-muted); font-size: 13px; margin-left: 6px; }
+  .no-match {
+    padding: 14px 16px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .quick-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    background: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .chip:hover { border-color: var(--border-strong); color: var(--text); }
+
+  #results-panel { margin-top: 44px; display: none; }
+  #results-panel.open { display: block; }
+  .breach-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .breach-header h2 {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 22px;
+    margin: 0;
+  }
+  .breach-year { font-family: 'IBM Plex Mono', monospace; color: var(--text-muted); font-size: 13px; }
+  .exposed-line { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+  .exposed-tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin: 0 4px 4px 0;
+  }
+  .exposed-tag.high { background: var(--danger-dim); color: var(--danger); }
+  .exposed-tag.mid { background: var(--accent-dim); color: var(--accent); }
+
+  .progress-track {
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.25s ease;
+  }
+
+  .checklist { display: flex; flex-direction: column; gap: 2px; }
+  .step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px 4px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .step:last-child { border-bottom: none; }
+  .step input[type="checkbox"] {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 4px;
+    margin-top: 2px;
+    cursor: pointer;
+    position: relative;
+  }
+  .step input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .step input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 6px; top: 2px;
+    width: 5px; height: 10px;
+    border: solid #0e1a19;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .step-body h3 {
+    font-size: 15.5px;
+    font-weight: 500;
+    margin: 0 0 3px;
+  }
+  .step.done .step-body h3 {
+    color: var(--text-muted);
+    text-decoration: line-through;
+  }
+  .step-body p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  .priority-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+    position: relative;
+    top: -1px;
+  }
+  .priority-tag.now { background: var(--danger-dim); color: var(--danger); }
+  .priority-tag.soon { background: var(--accent-dim); color: var(--accent); }
+
+  .panic-note {
+    margin-top: 32px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="kicker">breach response guide</p>
+    <h1>I got breached. Now what?</h1>
+    <p>Tell us which company leaked your data. We'll give you the exact steps to take, in order, starting with the one that matters most.</p>
+  </header>
+
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Search a company, e.g. LinkedIn, Equifax, T-Mobile" autocomplete="off">
+    <div class="results" id="results"></div>
+  </div>
+  <div class="quick-picks" id="quick-picks"></div>
+
+  <div id="results-panel">
+    <div class="breach-header">
+      <h2 id="b-name"></h2>
+      <span class="breach-year" id="b-year"></span>
+    </div>
+    <div class="exposed-line">Data exposed: <span id="b-exposed"></span></div>
+
+    <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
+
+    <div class="checklist" id="checklist"></div>
+
+    <div class="panic-note">Do these in order. The first one or two matter most — if you only have five minutes, that's where to spend them.</div>
+  </div>
+
+  <footer>
+    Not affiliated with any company listed. Always verify breach notices through the company's official site.
+  </footer>
+</div>
+
+<script>
+const DATA_TYPES = {
+  password: { label: "passwords", severity: "high" },
+  ssn: { label: "SSN", severity: "high" },
+  financial: { label: "financial info", severity: "high" },
+  email: { label: "email addresses", severity: "mid" },
+  phone: { label: "phone numbers", severity: "mid" },
+  address: { label: "home address", severity: "mid" },
+  security_q: { label: "security questions", severity: "high" },
+  gov_id: { label: "driver's license / gov ID", severity: "high" },
+};
+
+function stepsFor(types) {
+  const steps = [];
+  if (types.includes("password")) {
+    steps.push({ t: "Change the password on this account", p: "now",
+      d: "Do this first, immediately, even before reading the rest of this list." });
+    steps.push({ t: "Change that password anywhere else you reused it", p: "now",
+      d: "If you use the same password on other sites, a breached one gives attackers a key to all of them." });
+    steps.push({ t: "Turn on two-factor authentication", p: "now",
+      d: "Use an authenticator app rather than SMS if the option exists." });
+  }
+  if (types.includes("security_q")) {
+    steps.push({ t: "Update your security questions", p: "soon",
+      d: "Treat exposed answers as compromised — attackers can use them to reset passwords elsewhere." });
+  }
+  if (types.includes("financial")) {
+    steps.push({ t: "Call your bank or card issuer", p: "now",
+      d: "Ask them to flag or reissue the card if card numbers were involved." });
+    steps.push({ t: "Review recent statements for unfamiliar charges", p: "now",
+      d: "Check the last 30-60 days, not just the last few days." });
+  }
+  if (types.includes("ssn")) {
+    steps.push({ t: "Freeze your credit at all three bureaus", p: "now",
+      d: "Equifax, Experian, and TransUnion. Freezing is free and stops new accounts from being opened in your name." });
+    steps.push({ t: "Set up a fraud alert", p: "soon",
+      d: "A free 1-year fraud alert makes lenders verify your identity before opening new credit." });
+    steps.push({ t: "Watch for an IRS or tax notice", p: "soon",
+      d: "SSN leaks are sometimes used for tax fraud. Consider filing early next season." });
+  }
+  if (types.includes("email")) {
+    steps.push({ t: "Watch for phishing emails referencing this breach", p: "soon",
+      d: "Scammers use real breach news to make fake 'verify your account' emails look legitimate." });
+  }
+  if (types.includes("phone")) {
+    steps.push({ t: "Be alert for SIM-swap attempts", p: "soon",
+      d: "Call your carrier and add a PIN or passcode required for any changes to your account." });
+  }
+  if (types.includes("gov_id")) {
+    steps.push({ t: "Report the exposed ID to your state DMV or issuing agency", p: "soon",
+      d: "Ask whether a replacement license or ID number is warranted given the exposure." });
+    steps.push({ t: "Add a note to your credit file about the exposed ID", p: "soon",
+      d: "A stolen driver's license or passport number can be used to open accounts in your name, same as an SSN." });
+  }
+  if (types.includes("address")) {
+    steps.push({ t: "Watch your mail for anything unexpected", p: "soon",
+      d: "New account confirmations or credit card offers you didn't request are a red flag." });
+  }
+  steps.push({ t: "Check haveibeenpwned.com for this and other exposures", p: "soon",
+    d: "See the full list of breaches tied to your email address." });
+  return steps;
+}
+
+const BREACHES = [
+  { name: "LinkedIn", year: 2021, types: ["email", "phone"] },
+  { name: "Equifax", year: 2017, types: ["ssn", "financial", "address"] },
+  { name: "T-Mobile", year: 2021, types: ["ssn", "address", "phone"] },
+  { name: "Facebook / Meta", year: 2021, types: ["email", "phone", "address"] },
+  { name: "Yahoo", year: 2013, types: ["password", "security_q", "email"] },
+  { name: "Capital One", year: 2019, types: ["ssn", "financial"] },
+  { name: "Marriott / Starwood", year: 2018, types: ["financial", "address", "phone"] },
+  { name: "23andMe", year: 2023, types: ["email", "address"] },
+  { name: "MOVEit (multiple orgs)", year: 2023, types: ["ssn", "financial", "address"] },
+  { name: "AT&T", year: 2024, types: ["ssn", "phone", "address"] },
+  { name: "Twitter / X", year: 2022, types: ["email", "phone"] },
+  { name: "Dropbox", year: 2016, types: ["password", "email"] },
+  { name: "Adobe", year: 2013, types: ["password", "financial", "email"] },
+  { name: "MyFitnessPal", year: 2018, types: ["password", "email"] },
+  { name: "Uber", year: 2016, types: ["password", "email", "phone"] },
+  { name: "eBay", year: 2014, types: ["password", "security_q", "address", "phone"] },
+  { name: "Home Depot", year: 2014, types: ["financial", "email"] },
+  { name: "Anthem", year: 2015, types: ["ssn", "address", "financial"] },
+  { name: "JPMorgan Chase", year: 2014, types: ["email", "phone", "address"] },
+  { name: "MGM Resorts", year: 2023, types: ["ssn", "address", "phone", "email"] },
+  { name: "Twitch", year: 2021, types: ["email", "password"] },
+  { name: "LastPass", year: 2022, types: ["password", "email", "address"] },
+  { name: "Ticketmaster", year: 2024, types: ["financial", "address", "email", "phone"] },
+  { name: "Change Healthcare", year: 2024, types: ["ssn", "financial", "address"] },
+  { name: "National Public Data", year: 2024, types: ["ssn", "address", "phone"] },
+  { name: "Robinhood", year: 2021, types: ["email", "phone"] },
+  { name: "Sony PlayStation Network", year: 2011, types: ["password", "financial", "address", "email"] },
+  { name: "IDScan.net", year: 2026, types: ["gov_id"] },
+  { name: "AssuranceAmerica", year: 2026, types: ["ssn", "gov_id", "address", "financial"] },
+  { name: "Exact Sciences", year: 2026, types: ["email", "address", "phone"] },
+  { name: "MediSecure", year: 2024, types: ["gov_id", "address"] },
+  { name: "Ascension Health", year: 2024, types: ["ssn", "financial", "address"] },
+  { name: "TriZetto Provider Solutions", year: 2025, types: ["ssn", "address"] },
+  { name: "Corewell Health", year: 2024, types: ["ssn", "address", "financial"] },
+  { name: "Episource", year: 2025, types: ["ssn", "address", "financial"] },
+  { name: "Northwell Health", year: 2024, types: ["ssn", "address", "financial"] },
+  { name: "Novant Health", year: 2024, types: ["ssn", "address", "financial"] },
+  { name: "Sutter Health", year: 2024, types: ["ssn", "address", "financial"] },
+  { name: "Henry Ford Health", year: 2024, types: ["ssn", "address", "financial"] },
+  { name: "Blue Shield of California", year: 2024, types: ["email", "address"] },
+  { name: "Salesloft (Drift breach)", year: 2025, types: ["email", "phone"] },
+  { name: "Cloudflare", year: 2025, types: ["email"] },
+  { name: "Palo Alto Networks", year: 2025, types: ["email", "phone"] },
+  { name: "Zscaler", year: 2025, types: ["email", "phone"] },
+  { name: "BeyondTrust", year: 2024, types: ["password"] },
+  { name: "Suno", year: 2025, types: ["email", "password"] },
+  { name: "Trello (Atlassian)", year: 2022, types: ["email"] },
+  { name: "Roku", year: 2024, types: ["password", "email"] },
+  { name: "Dell", year: 2024, types: ["email", "address"] },
+  { name: "Twilio (Authy)", year: 2024, types: ["phone"] },
+  { name: "Crypto.com", year: 2022, types: ["password", "email", "financial"] },
+  { name: "Ledger", year: 2020, types: ["email", "address", "phone"] },
+  { name: "Live Nation", year: 2024, types: ["financial", "address", "email", "phone"] },
+  { name: "Madison Square Garden Sports", year: 2026, types: ["ssn", "address", "email"] },
+  { name: "Caesars Entertainment", year: 2023, types: ["ssn", "gov_id", "address"] },
+  { name: "Disney (corporate Slack breach)", year: 2024, types: ["password", "email"] },
+  { name: "Evolve Bank & Trust", year: 2024, types: ["ssn", "financial", "address"] },
+  { name: "First American Financial Corporation", year: 2019, types: ["ssn", "financial"] },
+  { name: "Fidelity National Financial", year: 2023, types: ["password"] },
+  { name: "Prudential Financial", year: 2024, types: ["ssn", "address"] },
+  { name: "Bank of America", year: 2024, types: ["ssn", "financial", "address"] },
+  { name: "Kraken", year: 2026, types: ["email", "address"] },
+  { name: "Cartier", year: 2025, types: ["email"] },
+  { name: "VF Corporation (Vans, The North Face)", year: 2023, types: ["email", "address", "phone"] },
+  { name: "Toyota Financial Services", year: 2023, types: ["financial", "address", "password", "gov_id"] },
+  { name: "Neiman Marcus", year: 2021, types: ["financial", "email"] },
+];
+
+const searchEl = document.getElementById('search');
+const resultsEl = document.getElementById('results');
+const quickPicks = document.getElementById('quick-picks');
+const panel = document.getElementById('results-panel');
+
+function renderQuickPicks() {
+  const picks = BREACHES.slice(0, 5);
+  quickPicks.innerHTML = '';
+  picks.forEach(b => {
+    const el = document.createElement('button');
+    el.className = 'chip';
+    el.textContent = b.name;
+    el.onclick = () => selectBreach(b);
+    quickPicks.appendChild(el);
+  });
+}
+
+function renderResults(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { resultsEl.classList.remove('open'); return; }
+  const matches = BREACHES.filter(b => b.name.toLowerCase().includes(q));
+  resultsEl.innerHTML = '';
+  if (matches.length === 0) {
+    resultsEl.innerHTML = '<div class="no-match">No match in our list yet. Try haveibeenpwned.com to confirm which breaches affect you.</div>';
+  } else {
+    matches.forEach(b => {
+      const el = document.createElement('div');
+      el.className = 'result-item';
+      el.innerHTML = b.name + '<span class="yr">' + b.year + '</span>';
+      el.onclick = () => selectBreach(b);
+      resultsEl.appendChild(el);
+    });
+  }
+  resultsEl.classList.add('open');
+}
+
+function selectBreach(b) {
+  searchEl.value = b.name;
+  resultsEl.classList.remove('open');
+  document.getElementById('b-name').textContent = b.name;
+  document.getElementById('b-year').textContent = b.year;
+
+  const exposedEl = document.getElementById('b-exposed');
+  exposedEl.innerHTML = '';
+  b.types.forEach(t => {
+    const info = DATA_TYPES[t];
+    const tag = document.createElement('span');
+    tag.className = 'exposed-tag ' + info.severity;
+    tag.textContent = info.label;
+    exposedEl.appendChild(tag);
+  });
+
+  const steps = stepsFor(b.types);
+  const listEl = document.getElementById('checklist');
+  listEl.innerHTML = '';
+  steps.forEach((s, i) => {
+    const row = document.createElement('label');
+    row.className = 'step';
+    row.innerHTML =
+      '<input type="checkbox" data-idx="' + i + '">' +
+      '<div class="step-body">' +
+        '<h3>' + s.t + '<span class="priority-tag ' + s.p + '">' + (s.p === 'now' ? 'do now' : 'do soon') + '</span></h3>' +
+        '<p>' + s.d + '</p>' +
+      '</div>';
+    listEl.appendChild(row);
+  });
+
+  listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.step').classList.toggle('done', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+  panel.classList.add('open');
+}
+
+function updateProgress() {
+  const boxes = document.querySelectorAll('#checklist input[type="checkbox"]');
+  const checked = document.querySelectorAll('#checklist input[type="checkbox"]:checked').length;
+  const pct = boxes.length ? Math.round((checked / boxes.length) * 100) : 0;
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+searchEl.addEventListener('input', e => renderResults(e.target.value));
+searchEl.addEventListener('focus', e => { if (e.target.value) renderResults(e.target.value); });
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-box')) resultsEl.classList.remove('open');
+});
+
+renderQuickPicks();
+</script>
+</body>
+</html>
