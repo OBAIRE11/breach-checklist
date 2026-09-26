@@ -400,7 +400,6 @@
   }
   .subscribe input[type="email"]:focus { border-color: var(--accent); }
   .subscribe input[type="email"]::placeholder { color: var(--text-muted); }
-  .subscribe .hp { position: absolute; left: -9999px; }
   .subscribe-status {
     font-size: 13px;
     margin: 10px 0 0;
@@ -484,12 +483,12 @@
   <section class="subscribe" id="subscribe">
     <h2>Get notified about new breaches</h2>
     <p>We add new breaches as they're disclosed. Leave your email and we'll let you know when the list grows. No spam, unsubscribe anytime.</p>
-    <form id="subscribe-form" novalidate>
+    <form id="subscribe-form" method="post" target="buttondown" novalidate>
       <div class="subscribe-row">
         <input type="email" name="email" id="sub-email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address">
         <button class="btn primary" type="submit" id="sub-btn">Notify me</button>
       </div>
-      <input class="hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <input type="hidden" name="embed" value="1">
       <p class="subscribe-status" id="sub-status" aria-live="polite"></p>
     </form>
   </section>
@@ -500,10 +499,9 @@
 </div>
 
 <script>
-// Email signups are sent to this endpoint as a form POST (JSON response expected).
-// Works as-is with Formspree: create a form at formspree.io and paste its URL here,
-// e.g. "https://formspree.io/f/abcdwxyz". Leave empty to disable sending.
-const SUBSCRIBE_ENDPOINT = "";
+// Email signups go to Buttondown. Put your Buttondown username here (the part after
+// buttondown.com/ in your newsletter's URL). Leave empty to show "coming soon" instead.
+const BUTTONDOWN_USERNAME = "";
 
 const DATA_TYPES = {
   password: { label: "passwords", severity: "high" },
@@ -764,46 +762,25 @@ function setSubStatus(msg, kind) {
   subStatus.className = 'subscribe-status' + (kind ? ' ' + kind : '');
 }
 
-function markSubscribed() {
-  subEmail.disabled = true;
-  subBtn.disabled = true;
-  subBtn.textContent = 'Subscribed';
-  setSubStatus("You're on the list. We'll email you when new breaches are added.", 'ok');
-}
-
-try { if (localStorage.getItem('breach-subscribed')) markSubscribed(); } catch (e) {}
-
-subForm.addEventListener('submit', async e => {
-  e.preventDefault();
+// Buttondown only accepts a regular form submission (it may need to show a CAPTCHA or
+// confirmation page), so the form posts into a small Buttondown popup window.
+subForm.addEventListener('submit', e => {
   const email = subEmail.value.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    e.preventDefault();
     setSubStatus('Please enter a valid email address.', 'err');
     subEmail.focus();
     return;
   }
-  if (!SUBSCRIBE_ENDPOINT) {
+  if (!BUTTONDOWN_USERNAME) {
+    e.preventDefault();
     setSubStatus('Email alerts are coming soon. Check back shortly!', 'err');
     return;
   }
-  subBtn.disabled = true;
-  subBtn.textContent = 'Sending…';
-  setSubStatus('');
-  try {
-    const data = new FormData(subForm);
-    if (currentBreach) data.append('checked_breach', currentBreach.name);
-    const res = await fetch(SUBSCRIBE_ENDPOINT, {
-      method: 'POST',
-      body: data,
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    try { localStorage.setItem('breach-subscribed', '1'); } catch (e) {}
-    markSubscribed();
-  } catch (err) {
-    subBtn.disabled = false;
-    subBtn.textContent = 'Notify me';
-    setSubStatus("Something went wrong. Please try again in a moment.", 'err');
-  }
+  subForm.action = 'https://buttondown.com/api/emails/embed-subscribe/' + encodeURIComponent(BUTTONDOWN_USERNAME);
+  window.open('', 'buttondown', 'width=520,height=640');
+  setSubStatus("Almost done: finish in the Buttondown window, then click the confirmation link we email you.", 'ok');
+  setTimeout(() => { subEmail.value = ''; }, 0);
 });
 
 searchEl.addEventListener('input', e => renderResults(e.target.value));
