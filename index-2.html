@@ -232,8 +232,160 @@
     font-size: 13.5px;
     color: var(--text-secondary);
   }
-  footer {
+
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .progress-meta .count { color: var(--text-secondary); }
+  .progress-track.complete .progress-fill {
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  .complete-card {
+    display: none;
+    margin-top: 28px;
+    padding: 28px 24px 24px;
+    background: var(--surface);
+    border: 1px solid var(--accent-dim);
+    border-radius: 8px;
+    text-align: center;
+  }
+  .complete-card.show {
+    display: block;
+    animation: card-in 0.45s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+  .complete-badge {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .complete-card.show .complete-badge { animation: badge-pop 0.5s 0.1s cubic-bezier(.3,1.6,.5,1) both; }
+  @keyframes badge-pop {
+    from { transform: scale(0.4); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .complete-badge svg path {
+    stroke: var(--accent);
+    stroke-width: 3;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+  }
+  .complete-card.show .complete-badge svg path { animation: draw 0.4s 0.45s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .complete-card h3 {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 21px;
+    margin: 0 0 6px;
+  }
+  .complete-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 auto 20px;
+    max-width: 44ch;
+  }
+  .complete-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+  .btn {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: none;
+    color: var(--text);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0e1a19;
+  }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: 0.6; cursor: default; }
+
+  .subscribe {
     margin-top: 56px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    scroll-margin-top: 24px;
+  }
+  .subscribe.flash { animation: flash 1.2s ease-out; }
+  @keyframes flash {
+    0% { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    100% { border-color: var(--border); box-shadow: none; }
+  }
+  .subscribe h2 {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 19px;
+    margin: 0 0 6px;
+  }
+  .subscribe > p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 16px;
+  }
+  .subscribe-row { display: flex; gap: 8px; }
+  .subscribe input[type="email"] {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    font-size: 16px;
+    font-family: inherit;
+    padding: 10px 14px;
+    border-radius: 6px;
+    outline: none;
+  }
+  .subscribe input[type="email"]:focus { border-color: var(--accent); }
+  .subscribe input[type="email"]::placeholder { color: var(--text-muted); }
+  .subscribe .hp { position: absolute; left: -9999px; }
+  .subscribe-status {
+    font-size: 13px;
+    margin: 10px 0 0;
+    min-height: 1em;
+    color: var(--text-muted);
+  }
+  .subscribe-status.ok { color: var(--accent); }
+  .subscribe-status.err { color: var(--danger); }
+  @media (max-width: 440px) {
+    .subscribe-row { flex-direction: column; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .complete-card.show, .complete-card.show .complete-badge,
+    .complete-card.show .complete-badge svg path, .subscribe.flash { animation: none; }
+    .complete-badge svg path { stroke-dashoffset: 0; }
+    .progress-fill { transition: none; }
+  }
+  footer {
+    margin-top: 32px;
     padding-top: 20px;
     border-top: 1px solid var(--border);
     font-size: 12.5px;
@@ -265,12 +417,38 @@
     </div>
     <div class="exposed-line">Data exposed: <span id="b-exposed"></span></div>
 
-    <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
+    <div class="progress-meta"><span>your progress</span><span class="count" id="progress-count"></span></div>
+    <div class="progress-track" id="progress-track"><div class="progress-fill" id="progress"></div></div>
 
     <div class="checklist" id="checklist"></div>
 
-    <div class="panic-note">Do these in order. The first one or two matter most — if you only have five minutes, that's where to spend them.</div>
+    <div class="complete-card" id="complete-card" role="status" aria-live="polite">
+      <div class="complete-badge" aria-hidden="true">
+        <svg width="32" height="32" viewBox="0 0 32 32"><path d="M8 16.5l5.5 5.5L24 11"/></svg>
+      </div>
+      <h3>You've covered everything.</h3>
+      <p id="complete-msg"></p>
+      <div class="complete-actions">
+        <button class="btn primary" id="btn-notify" type="button">Get alerts for new breaches</button>
+        <button class="btn" id="btn-another" type="button">Check another breach</button>
+      </div>
+    </div>
+
+    <div class="panic-note" id="panic-note">Do these in order. The first one or two matter most — if you only have five minutes, that's where to spend them.</div>
   </div>
+
+  <section class="subscribe" id="subscribe">
+    <h2>Get notified about new breaches</h2>
+    <p>We add new breaches as they're disclosed. Leave your email and we'll let you know when the list grows. No spam, unsubscribe anytime.</p>
+    <form id="subscribe-form" novalidate>
+      <div class="subscribe-row">
+        <input type="email" name="email" id="sub-email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address">
+        <button class="btn primary" type="submit" id="sub-btn">Notify me</button>
+      </div>
+      <input class="hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <p class="subscribe-status" id="sub-status" aria-live="polite"></p>
+    </form>
+  </section>
 
   <footer>
     Not affiliated with any company listed. Always verify breach notices through the company's official site.
@@ -278,6 +456,11 @@
 </div>
 
 <script>
+// Email signups are sent to this endpoint as a form POST (JSON response expected).
+// Works as-is with Formspree: create a form at formspree.io and paste its URL here,
+// e.g. "https://formspree.io/f/abcdwxyz". Leave empty to disable sending.
+const SUBSCRIBE_ENDPOINT = "";
+
 const DATA_TYPES = {
   password: { label: "passwords", severity: "high" },
   ssn: { label: "SSN", severity: "high" },
@@ -446,6 +629,8 @@ function renderResults(query) {
 }
 
 function selectBreach(b) {
+  currentBreach = b;
+  wasComplete = false;
   searchEl.value = b.name;
   resultsEl.classList.remove('open');
   document.getElementById('b-name').textContent = b.name;
@@ -487,12 +672,100 @@ function selectBreach(b) {
   panel.classList.add('open');
 }
 
+let currentBreach = null;
+let wasComplete = false;
+
 function updateProgress() {
   const boxes = document.querySelectorAll('#checklist input[type="checkbox"]');
   const checked = document.querySelectorAll('#checklist input[type="checkbox"]:checked').length;
   const pct = boxes.length ? Math.round((checked / boxes.length) * 100) : 0;
   document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('progress-count').textContent = checked + ' of ' + boxes.length + ' done';
+
+  const complete = boxes.length > 0 && checked === boxes.length;
+  document.getElementById('progress-track').classList.toggle('complete', complete);
+  document.getElementById('panic-note').style.display = complete ? 'none' : '';
+  const card = document.getElementById('complete-card');
+  if (complete && !wasComplete) {
+    document.getElementById('complete-msg').textContent =
+      'All ' + boxes.length + ' steps for the ' + currentBreach.name +
+      ' breach are done. ' + (currentBreach.types.includes('ssn')
+        ? 'Keep your credit freezes in place and stay alert for phishing over the next few months.'
+        : 'Stay alert for phishing and unexpected account activity over the next few months.');
+    card.classList.add('show');
+    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150);
+  } else if (!complete) {
+    card.classList.remove('show');
+  }
+  wasComplete = complete;
 }
+
+document.getElementById('btn-another').addEventListener('click', () => {
+  searchEl.value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  searchEl.focus({ preventScroll: true });
+});
+
+document.getElementById('btn-notify').addEventListener('click', () => {
+  const sub = document.getElementById('subscribe');
+  sub.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  sub.classList.remove('flash');
+  void sub.offsetWidth;
+  sub.classList.add('flash');
+  setTimeout(() => document.getElementById('sub-email').focus({ preventScroll: true }), 400);
+});
+
+const subForm = document.getElementById('subscribe-form');
+const subEmail = document.getElementById('sub-email');
+const subBtn = document.getElementById('sub-btn');
+const subStatus = document.getElementById('sub-status');
+
+function setSubStatus(msg, kind) {
+  subStatus.textContent = msg;
+  subStatus.className = 'subscribe-status' + (kind ? ' ' + kind : '');
+}
+
+function markSubscribed() {
+  subEmail.disabled = true;
+  subBtn.disabled = true;
+  subBtn.textContent = 'Subscribed';
+  setSubStatus("You're on the list. We'll email you when new breaches are added.", 'ok');
+}
+
+try { if (localStorage.getItem('breach-subscribed')) markSubscribed(); } catch (e) {}
+
+subForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = subEmail.value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setSubStatus('Please enter a valid email address.', 'err');
+    subEmail.focus();
+    return;
+  }
+  if (!SUBSCRIBE_ENDPOINT) {
+    setSubStatus('Email alerts are coming soon. Check back shortly!', 'err');
+    return;
+  }
+  subBtn.disabled = true;
+  subBtn.textContent = 'Sending…';
+  setSubStatus('');
+  try {
+    const data = new FormData(subForm);
+    if (currentBreach) data.append('checked_breach', currentBreach.name);
+    const res = await fetch(SUBSCRIBE_ENDPOINT, {
+      method: 'POST',
+      body: data,
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    try { localStorage.setItem('breach-subscribed', '1'); } catch (e) {}
+    markSubscribed();
+  } catch (err) {
+    subBtn.disabled = false;
+    subBtn.textContent = 'Notify me';
+    setSubStatus("Something went wrong. Please try again in a moment.", 'err');
+  }
+});
 
 searchEl.addEventListener('input', e => renderResults(e.target.value));
 searchEl.addEventListener('focus', e => { if (e.target.value) renderResults(e.target.value); });
