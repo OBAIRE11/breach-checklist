@@ -172,6 +172,22 @@
   }
   .breach-year { font-family: 'IBM Plex Mono', monospace; color: var(--text-muted); font-size: 13px; }
   .exposed-line { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+  .incident-picker {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 18px;
+  }
+  .incident-picker.show { display: flex; }
+  .picker-label { font-size: 13px; color: var(--text-secondary); margin-right: 2px; }
+  .chip[aria-checked="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface);
+  }
+  .breach-note { font-size: 13px; color: var(--text-muted); margin: 0 0 8px; }
+  .breach-note:empty { display: none; }
   .exposed-tag {
     display: inline-block;
     font-family: 'IBM Plex Mono', monospace;
@@ -246,6 +262,8 @@
     margin: 0;
   }
   .priority-tag {
+    display: inline-block;
+    white-space: nowrap;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10.5px;
     letter-spacing: 0.03em;
@@ -441,7 +459,7 @@
         <path d="M88 140l16 16 32-38" stroke="var(--accent)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <div>
-        <h1>I got breached. Now what?</h1>
+        <h1>I got breached.<br>Now what?</h1>
         <p class="kicker">breach response guide</p>
       </div>
     </div>
@@ -459,6 +477,8 @@
       <h2 id="b-name"></h2>
       <span class="breach-year" id="b-year"></span>
     </div>
+    <div class="incident-picker" id="incident-picker" role="radiogroup" aria-label="Which breach?"></div>
+    <p class="breach-note" id="b-note"></p>
     <div class="exposed-line">Data exposed: <span id="b-exposed"></span></div>
 
     <div class="progress-meta"><span>your progress</span><span class="count" id="progress-count"></span></div>
@@ -567,9 +587,11 @@ function stepsFor(types) {
 }
 
 // The breach list lives in breaches.json so it can be updated without touching this page.
-let BREACHES = [];
+// Each entry is a company with one or more breaches: { name, aliases?, breaches: [{ year, types, added, note? }] }.
+let COMPANIES = [];
 let breachesLoaded = false;
-let currentBreach = null;
+let currentCompany = null;
+let currentTypes = [];
 let wasComplete = false;
 let matches = [];
 let activeIdx = -1;
@@ -580,18 +602,19 @@ const quickPicks = document.getElementById('quick-picks');
 const panel = document.getElementById('results-panel');
 
 function renderQuickPicks() {
-  const picks = BREACHES.slice(0, 5);
+  const picks = COMPANIES.slice(0, 5);
   quickPicks.innerHTML = '';
-  picks.forEach(b => {
+  picks.forEach(c => {
     const el = document.createElement('button');
     el.className = 'chip';
-    el.textContent = b.name;
-    el.onclick = () => selectBreach(b);
+    el.textContent = c.name;
+    el.onclick = () => selectCompany(c);
     quickPicks.appendChild(el);
   });
 }
 
 const normalize = str => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+const yearsOf = c => c.breaches.map(b => b.year).join(', ');
 
 function openResults(open) {
   resultsEl.classList.toggle('open', open);
@@ -626,25 +649,28 @@ function renderResults(query) {
     openResults(true);
     return;
   }
-  matches = BREACHES
-    .map(b => ({ b, pos: normalize(b.name).indexOf(q) }))
+  matches = COMPANIES
+    .map(c => {
+      const namePos = normalize(c.name).indexOf(q);
+      const alias = namePos === -1 ? (c.aliases || []).find(a => normalize(a).includes(q)) : undefined;
+      return { c, alias, pos: alias ? normalize(alias).indexOf(q) : namePos };
+    })
     .filter(m => m.pos !== -1)
-    .sort((x, y) => (y.pos === 0) - (x.pos === 0)) // names that start with the query first
-    .map(m => m.b);
+    .sort((x, y) => (y.pos === 0) - (x.pos === 0)); // names that start with the query first
   if (matches.length === 0) {
     resultsEl.replaceChildren(noMatch('No match in our list yet. Try haveibeenpwned.com to confirm which breaches affect you.'));
   } else {
-    resultsEl.replaceChildren(...matches.map((b, i) => {
+    resultsEl.replaceChildren(...matches.map(({ c, alias }, i) => {
       const el = document.createElement('div');
       el.className = 'result-item';
       el.id = 'result-' + i;
       el.setAttribute('role', 'option');
-      el.textContent = b.name;
+      el.textContent = c.name;
       const yr = document.createElement('span');
       yr.className = 'yr';
-      yr.textContent = b.year;
+      yr.textContent = (alias ? alias + ' · ' : '') + yearsOf(c);
       el.appendChild(yr);
-      el.onclick = () => selectBreach(b);
+      el.onclick = () => selectCompany(c);
       return el;
     }));
   }
@@ -662,32 +688,76 @@ searchEl.addEventListener('keydown', e => {
     setActive(activeIdx <= 0 ? matches.length - 1 : activeIdx - 1);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    selectBreach(matches[Math.max(activeIdx, 0)]);
+    selectCompany(matches[Math.max(activeIdx, 0)].c);
   } else if (e.key === 'Escape') {
     openResults(false);
   }
 });
 
-function selectBreach(b) {
-  currentBreach = b;
-  wasComplete = false;
-  searchEl.value = b.name;
+const typeOrder = Object.keys(DATA_TYPES);
+// Short summary for picker chips: first two data types, then "+N".
+function typeSummary(types) {
+  const labels = types.filter(t => DATA_TYPES[t]).map(t => DATA_TYPES[t].label);
+  return labels.slice(0, 2).join(', ') + (labels.length > 2 ? ' +' + (labels.length - 2) : '');
+}
+
+function selectCompany(c) {
+  currentCompany = c;
+  searchEl.value = c.name;
   openResults(false);
-  document.getElementById('b-name').textContent = b.name;
-  document.getElementById('b-year').textContent = b.year;
+  document.getElementById('b-name').textContent = c.name;
+  document.getElementById('b-year').textContent = yearsOf(c);
+
+  // Companies with several breaches get a picker. "Not sure" is the default and
+  // combines every breach, so the safe choice needs no extra thought.
+  const picker = document.getElementById('incident-picker');
+  const multiple = c.breaches.length > 1;
+  picker.classList.toggle('show', multiple);
+  picker.replaceChildren();
+  if (multiple) {
+    const label = document.createElement('span');
+    label.className = 'picker-label';
+    label.textContent = 'Which breach?';
+    picker.appendChild(label);
+    const options = [...c.breaches.map((b, i) => [i, b.year + ' · ' + typeSummary(b.types)]), ['all', 'Not sure / all of them']];
+    for (const [value, text] of options) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chip';
+      btn.setAttribute('role', 'radio');
+      btn.textContent = text;
+      btn.onclick = () => showBreach(value);
+      btn.dataset.value = value;
+      picker.appendChild(btn);
+    }
+  }
+  showBreach(multiple ? 'all' : 0);
+  panel.classList.add('open');
+}
+
+function showBreach(which) {
+  const c = currentCompany;
+  const selected = which === 'all' ? c.breaches : [c.breaches[which]];
+  currentTypes = typeOrder.filter(t => selected.some(b => b.types.includes(t)));
+  wasComplete = false;
+
+  document.querySelectorAll('#incident-picker [role="radio"]').forEach(btn =>
+    btn.setAttribute('aria-checked', btn.dataset.value === String(which)));
+  document.getElementById('b-note').textContent = selected.length === 1 && selected[0].note
+    ? (c.breaches.length > 1 ? selected[0].year + ': ' : '') + selected[0].note
+    : '';
 
   const exposedEl = document.getElementById('b-exposed');
   exposedEl.innerHTML = '';
-  b.types.forEach(t => {
+  currentTypes.forEach(t => {
     const info = DATA_TYPES[t];
-    if (!info) return;
     const tag = document.createElement('span');
     tag.className = 'exposed-tag ' + info.severity;
     tag.textContent = info.label;
     exposedEl.appendChild(tag);
   });
 
-  const steps = stepsFor(b.types);
+  const steps = stepsFor(currentTypes);
   const listEl = document.getElementById('checklist');
   listEl.innerHTML = '';
   steps.forEach(s => {
@@ -710,7 +780,6 @@ function selectBreach(b) {
   });
 
   updateProgress();
-  panel.classList.add('open');
 }
 
 function updateProgress() {
@@ -726,8 +795,8 @@ function updateProgress() {
   const card = document.getElementById('complete-card');
   if (complete && !wasComplete) {
     document.getElementById('complete-msg').textContent =
-      'All ' + boxes.length + ' steps for the ' + currentBreach.name +
-      ' breach are done. ' + (currentBreach.types.includes('ssn')
+      'All ' + boxes.length + ' steps for ' + currentCompany.name + ' are done. ' +
+      (currentTypes.includes('ssn')
         ? 'Keep your credit freezes in place and stay alert for phishing over the next few months.'
         : 'Stay alert for phishing and unexpected account activity over the next few months.');
     card.classList.add('show');
@@ -794,7 +863,7 @@ async function loadBreaches() {
   try {
     const res = await fetch('breaches.json', { cache: 'no-cache' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    BREACHES = await res.json();
+    COMPANIES = await res.json();
     breachesLoaded = true;
     renderQuickPicks();
     if (searchEl.value && document.activeElement === searchEl) renderResults(searchEl.value);
