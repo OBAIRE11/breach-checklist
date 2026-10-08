@@ -51,3 +51,7 @@ The "Get notified about new breaches" form sends signups to [Buttondown](https:/
 Submitting opens a small Buttondown window, because Buttondown may need to show a CAPTCHA or confirmation step. Subscribers then confirm by email. To send an alert, write a new email in the Buttondown dashboard.
 
 To move to another service later, export your subscribers from Buttondown as a CSV file (Subscribers, then Export), import it into the new service, and point the form at that service instead.
+
+## Mobile app
+
+A native iOS and Android version lives in [`mobile/`](mobile/). It uses the same breach list, fetched from the live site. See [`mobile/README.md`](mobile/README.md) to run it on your phone with Expo Go.
